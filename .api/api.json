@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "apis": [
+    {
+      "identifier": "cielo-10",
+      "source": "@cielo-10/v1.0#2e2eya316mfb0n4kt",
+      "integrity": "sha512-aCbpvcnulN+8UNQwi68drH+tKztVlBo0ZvMvH9a3Ca+0vkA9VZlTY4sucOp15bMBd3+0o1Qv5zkQupmFByT5mA==",
+      "installerVersion": "6.1.3"
+    }
+  ]
+}

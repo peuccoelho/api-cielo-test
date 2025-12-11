@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar link de pagamento</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <main class="page">
+        <div class="brand-title">
+            <img src="/groulogo.jpg" alt="Logotipo Grou" class="brand-logo">
+        </div>
+        <p class="lead">Crie um link de pagamento Cielo</p>
+
+        <form id="createLinkForm" novalidate>
+            <label>
+                <span>Título *</span>
+                <input type="text" id="title" name="title" placeholder="Ex: GROU TURISMO" required>
+            </label>
+            <label>
+                <span>Descrição</span>
+                <textarea id="description" name="description" rows="3" placeholder="Detalhes opcionais"></textarea>
+            </label>
+            <label>
+                <span>Valor (R$) *</span>
+                <input type="number" id="price" name="price" min="0.01" step="0.01" placeholder="Ex: 49.90" required>
+            </label>
+            <button type="submit" id="submitBtn">
+                <span class="spinner" aria-hidden="true"></span>
+                Gerar link
+            </button>
+        </form>
+
+        <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+
+        <section class="result" id="result" hidden>
+            <h2>Link criado</h2>
+            <dl>
+                <div>
+                    <dt>ID do link</dt>
+                    <dd id="linkId">—</dd>
+                </div>
+                <div>
+                    <dt>URL de pagamento</dt>
+                    <dd><a id="linkUrl" class="result-link" href="#" target="_blank" rel="noopener noreferrer">�</a></dd>
+                </div>
+            </dl>
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById('createLinkForm');
+        const titleInput = document.getElementById('title');
+        const descriptionInput = document.getElementById('description');
+        const priceInput = document.getElementById('price');
+        const submitBtn = document.getElementById('submitBtn');
+        const feedbackEl = document.getElementById('feedback');
+        const resultSection = document.getElementById('result');
+        const linkIdEl = document.getElementById('linkId');
+        const linkUrlEl = document.getElementById('linkUrl');
+
+        function setLoading(isLoading) {
+            submitBtn.classList.toggle('loading', isLoading);
+            submitBtn.disabled = isLoading;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            feedbackEl.textContent = '';
+            feedbackEl.className = 'feedback';
+            resultSection.hidden = true;
+            linkIdEl.textContent = '—';
+            linkUrlEl.textContent = '—';
+            linkUrlEl.removeAttribute('href');
+
+            const name = titleInput.value.trim();
+            const description = descriptionInput.value.trim();
+            const rawPrice = priceInput.value.trim().replace(',', '.');
+            const price = Number(rawPrice);
+
+            if (!name || !Number.isFinite(price) || price <= 0) {
+                feedbackEl.textContent = 'Informe um título e um valor maior que zero.';
+                feedbackEl.classList.add('feedback--error');
+                return;
+            }
+
+            const payload = { name, price, quantity: 1 };
+            if (description) {
+                payload.description = description;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch('/create-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json().catch(() => null);
+
+                if (!response.ok || !data) {
+                    throw new Error('Não foi possível criar o link. Tente novamente.');
+                }
+
+                if (data.success === false) {
+                    const message = data.error?.message || data.error || 'Não foi possível criar o link.';
+                    throw new Error(message);
+                }
+
+                const created = data.data || data;
+
+                const linkId = created.id ?? created.orderNumber ?? created?.data?.id ?? '—';
+                const paymentLink = created.shortUrl
+                    ?? created.link
+                    ?? created.url
+                    ?? created?.data?.shortUrl
+                    ?? created?.data?.link
+                    ?? created?.data?.url
+                    ?? '';
+
+                linkIdEl.textContent = linkId || '—';
+
+                if (paymentLink) {
+                    linkUrlEl.textContent = paymentLink;
+                    linkUrlEl.href = paymentLink;
+                } else {
+                    linkUrlEl.textContent = 'Link não disponível';
+                    linkUrlEl.removeAttribute('href');
+                }
+
+                resultSection.hidden = false;
+                feedbackEl.textContent = 'Link criado com sucesso!';
+                feedbackEl.classList.add('feedback--success');
+                form.reset();
+            } catch (error) {
+                feedbackEl.textContent = error.message || 'Erro ao criar link.';
+                feedbackEl.classList.add('feedback--error');
+            } finally {
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>
